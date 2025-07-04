@@ -1,43 +1,104 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { v4 as uuidv4 } from 'uuid';
 import "./App.css";
 import logo from "/logo.png";
 
+// Interfaces for our state
 interface SystemInfo {
   username: string;
   hostname: string;
 }
 
+interface Tab {
+  id: string;
+  title: string;
+  output: string[];
+  command: string;
+  cwd: string;
+  showWelcome: boolean;
+}
+
+const createInitialTab = (): Tab => ({
+  id: uuidv4(),
+  title: "Terminal",
+  output: [],
+  command: "",
+  cwd: "", // Will be populated by useEffect
+  showWelcome: true,
+});
+
 function App() {
-  const [command, setCommand] = useState("");
-  const [output, setOutput] = useState<string[]>([]);
-  const [cwd, setCwd] = useState("~");
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [tabs, setTabs] = useState<Tab[]>([createInitialTab()]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(tabs[0]?.id || null);
   const [homeDir, setHomeDir] = useState("");
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
-  const endOfOutputRef = useRef<null | HTMLDivElement>(null);
-  const inputRef = useRef<null | HTMLInputElement>(null);
 
-  const scrollToBottom = () => {
-    endOfOutputRef.current?.scrollIntoView({ behavior: "smooth" });
+  const endOfOutputRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
+  // Scroll to bottom of the active tab's output
+  const scrollToBottom = (tabId: string) => {
+    endOfOutputRefs.current[tabId]?.scrollIntoView({ behavior: "auto" });
   };
 
-  const focusInput = () => {
-    inputRef.current?.focus();
+  // Focus the active tab's input
+  const focusInput = (tabId: string) => {
+    inputRefs.current[tabId]?.focus();
   };
 
+  // Update a specific tab's state
+  const updateTab = (tabId: string, updates: Partial<Tab>) => {
+    setTabs(prevTabs =>
+      prevTabs.map(tab => (tab.id === tabId ? { ...tab, ...updates } : tab))
+    );
+  };
+
+  // Add a new tab
+  const addTab = async (makeActive = true) => {
+    const newTabId = uuidv4();
+    const initialCwd = await invoke<string>("get_current_dir");
+
+    const newTab: Tab = {
+      id: newTabId,
+      title: "Terminal",
+      output: [],
+      command: "",
+      cwd: initialCwd.trim(),
+      showWelcome: false, // No welcome on subsequent tabs
+    };
+
+    setTabs(prevTabs => [...prevTabs, newTab]);
+    if (makeActive) {
+      setActiveTabId(newTabId);
+    }
+  };
+
+  // Close a tab
+  const closeTab = (tabId: string) => {
+    if (tabs.length <= 1) return; // Prevent closing the last tab
+
+    const tabIndex = tabs.findIndex(tab => tab.id === tabId);
+    const newTabs = tabs.filter(tab => tab.id !== tabId);
+    setTabs(newTabs);
+
+    if (activeTabId === tabId) {
+      const newActiveIndex = Math.max(0, tabIndex - 1);
+      setActiveTabId(newTabs[newActiveIndex]?.id || null);
+    }
+  };
+
+  // Get display path for prompt
   const getDisplayPath = (path: string) => {
     if (homeDir && path === homeDir) {
       return "~";
     }
-    if (path === '/') {
-        return '/';
-    }
-    const cleanedPath = path.endsWith('/') ? path.slice(0, -1) : path;
-    const lastSlashIndex = cleanedPath.lastIndexOf('/');
-    return cleanedPath.substring(lastSlashIndex + 1);
+    const lastPart = path.split('/').filter(Boolean).pop();
+    return lastPart || '/';
   };
 
+  // Get prompt HTML
   const getPromptHtml = (path: string) => {
     const displayPath = getDisplayPath(path);
     const userHost = systemInfo
@@ -48,40 +109,16 @@ function App() {
     return `${userHost}&nbsp;${dir}&nbsp;${symbol}`;
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [output]);
+  // Command execution logic
+  async function execute(tabId: string) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
 
-  useEffect(() => {
-    const getInitialData = async () => {
-      try {
-        const [initialCwd, initialHomeDir, sysInfo] = await Promise.all([
-          invoke<string>("execute_command", { command: "pwd" }),
-          invoke<string>("get_home_dir"),
-          invoke<SystemInfo>("get_system_info"),
-        ]);
-        setCwd(initialCwd.trim());
-        setHomeDir(initialHomeDir.trim());
-        setSystemInfo(sysInfo);
-      } catch (e) {
-        console.error(e);
-        setOutput(prev => [...prev, String(e)]);
-      }
-    };
-    getInitialData();
-    focusInput();
-  }, []);
+    const promptHtml = getPromptHtml(tab.cwd);
+    const commandToExecute = tab.command;
 
-  async function execute() {
-    if (showWelcome) {
-      setShowWelcome(false);
-    }
-
-    const promptHtml = getPromptHtml(cwd);
-    const commandToExecute = command;
-
-    setOutput(prev => [...prev, `${promptHtml} ${commandToExecute}`]);
-    setCommand("");
+    const newOutput = [...tab.output, `${promptHtml} ${commandToExecute}`];
+    updateTab(tabId, { command: "", showWelcome: false, output: newOutput });
 
     if (!commandToExecute.trim()) {
       return;
@@ -89,55 +126,116 @@ function App() {
 
     try {
       const result: string = await invoke("execute_command", { command: commandToExecute });
+      let finalOutput = [...newOutput];
       if (result) {
-        setOutput(prev => [...prev, result.trim()]);
+        finalOutput.push(result.trim());
       }
 
       if (commandToExecute.trim().startsWith("cd ")) {
-        const newCwd: string = await invoke("execute_command", { command: "pwd" });
-        setCwd(newCwd.trim());
+        const newCwd: string = await invoke("get_current_dir");
+        updateTab(tabId, { cwd: newCwd.trim(), output: finalOutput });
+      } else {
+        updateTab(tabId, { output: finalOutput });
       }
     } catch (err) {
-      setOutput(prev => [...prev, String(err)]);
+      updateTab(tabId, { output: [...newOutput, String(err)] });
     }
   }
 
+  // Effect for initial setup and event listeners
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        const [initialHomeDir, sysInfo, initialCwd] = await Promise.all([
+          invoke<string>("get_home_dir"),
+          invoke<SystemInfo>("get_system_info"),
+          invoke<string>("get_current_dir"),
+        ]);
+        setHomeDir(initialHomeDir.trim());
+        setSystemInfo(sysInfo);
+        // Update the first tab with the fetched CWD
+        if (tabs[0]) {
+          updateTab(tabs[0].id, { cwd: initialCwd.trim() });
+        }
+      } catch (e) {
+        console.error("Failed to get initial data:", e);
+      }
+    };
+
+    initializeApp();
+
+    const unlisten = listen("new_tab", () => {
+      addTab();
+    });
+
+    return () => {
+      unlisten.then(f => f());
+    };
+  }, []); // Run only once
+
+  // Effect to scroll and focus when active tab changes or its output updates
+  useEffect(() => {
+    if (activeTabId) {
+      scrollToBottom(activeTabId);
+      focusInput(activeTabId);
+    }
+  }, [activeTabId, tabs]);
+
   return (
-    <main className="container" onClick={focusInput}>
-      <div className="terminal">
-        <div className="output-area">
-          {showWelcome && (
-            <div className="welcome">
-              <img src={logo} alt="FTerm Logo" className="logo" />
-              <h1>Welcome to FTerm</h1>
-              <p>Your friendly neighborhood terminal.</p>
+    <main className="container">
+      <div className="tab-bar">
+        {tabs.map(tab => (
+          <div
+            key={tab.id}
+            className={`tab-item ${tab.id === activeTabId ? 'active' : ''}`}
+            onClick={() => setActiveTabId(tab.id)}
+          >
+            <span>{getDisplayPath(tab.cwd)}</span>
+            <button className="close-tab" onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}>×</button>
+          </div>
+        ))}
+        <button className="new-tab" onClick={() => addTab()}>+</button>
+      </div>
+      <div className="terminal-content">
+        {tabs.map(tab => (
+          <div key={tab.id} className="terminal-instance" style={{ display: tab.id === activeTabId ? 'flex' : 'none' }}>
+            <div className="terminal" onClick={() => focusInput(tab.id)}>
+              <div className="output-area">
+                {tab.showWelcome && (
+                  <div className="welcome">
+                    <img src={logo} alt="FTerm Logo" className="logo" />
+                    <h1>Welcome to FTerm</h1>
+                    <p>Your friendly neighborhood terminal.</p>
+                  </div>
+                )}
+                {tab.output.map((line, index) => (
+                  <div key={index} dangerouslySetInnerHTML={{ __html: line.replace(/\n/g, '<br/>') }} />
+                ))}
+                <div ref={el => (endOfOutputRefs.current[tab.id] = el)} />
+              </div>
+              <form
+                className="row"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  execute(tab.id);
+                }}
+              >
+                <label
+                  htmlFor={`command-input-${tab.id}`}
+                  dangerouslySetInnerHTML={{ __html: getPromptHtml(tab.cwd) }}
+                />
+                <input
+                  ref={el => (inputRefs.current[tab.id] = el)}
+                  id={`command-input-${tab.id}`}
+                  autoFocus={tab.id === activeTabId}
+                  value={tab.command}
+                  onChange={(e) => updateTab(tab.id, { command: e.currentTarget.value })}
+                  placeholder=""
+                />
+              </form>
             </div>
-          )}
-          {output.map((line, index) => (
-            <div key={index} dangerouslySetInnerHTML={{ __html: line.replace(/\n/g, '<br/>') }} />
-          ))}
-          <div ref={endOfOutputRef} />
-        </div>
-        <form
-          className="row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            execute();
-          }}
-        >
-          <label
-            htmlFor="command-input"
-            dangerouslySetInnerHTML={{ __html: getPromptHtml(cwd) }}
-          />
-          <input
-            ref={inputRef}
-            id="command-input"
-            autoFocus
-            value={command}
-            onChange={(e) => setCommand(e.currentTarget.value)}
-            placeholder=""
-          />
-        </form>
+          </div>
+        ))}
       </div>
     </main>
   );

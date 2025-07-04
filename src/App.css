@@ -1,110 +1,191 @@
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafb);
-}
 :root {
-  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace;
-  font-size: 14px;
-  line-height: 1.5;
-}
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
 
-body, #root {
-  background-color: #1e1e1e;
-  color: #d4d4d4;
-  margin: 0;
-  padding: 0;
-  height: 100vh;
-  overflow: hidden;
+  color: #f6f6f6;
+  background-color: #0d1117;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
 }
 
 .container {
-  height: 100%;
-  padding: 10px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   box-sizing: border-box;
-  cursor: text;
+  background-color: #161b22;
+}
+
+.tab-bar {
+  display: flex;
+  background-color: #010409;
+  padding: 5px 5px 0 5px;
+  flex-shrink: 0;
+}
+
+.tab-item {
+  background-color: #0d1117;
+  color: #8b949e;
+  padding: 8px 15px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  cursor: pointer;
+  margin-right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 1px solid #30363d;
+  border-bottom: none;
+}
+
+.tab-item.active {
+  background-color: #161b22;
+  color: #c9d1d9;
+  border-bottom: 1px solid #161b22;
+}
+
+.close-tab {
+  background: none;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 10px;
+  padding: 0 5px;
+  line-height: 1;
+}
+
+.close-tab:hover {
+  color: #f0f6fc;
+}
+
+.new-tab {
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-bottom: none;
+  color: #8b949e;
+  cursor: pointer;
+  padding: 5px 10px;
+  font-size: 18px;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+.new-tab:hover {
+  background-color: #161b22;
+}
+
+.terminal-content {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.terminal-instance {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.logo {
+  height: 10em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: 0.75s;
 }
 
 .terminal {
-  background-color: transparent;
-  height: 100%;
+  background-color: #161b22;
+  color: #c9d1d9;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  padding: 15px;
+  border-radius: 6px;
+  border-top-left-radius: 0;
+  border: 1px solid #30363d;
+  border-top: none;
+  overflow-y: auto;
+  flex-grow: 1;
+  text-align: left;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .output-area {
   flex-grow: 1;
   overflow-y: auto;
-  text-align: left;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-.row label {
-  white-space: nowrap;
-  padding-right: 0.5rem;
-  color: #888;
-  flex-shrink: 0;
-}
-
-.prompt-info {
-  color: #00dd00; /* Green for user@host */
-}
-
-.prompt-path {
-  color: #87ceeb; /* Sky blue for path */
-}
-
-.prompt-symbol {
-  color: #ffffff; /* White for the % symbol */
-}
-
-.row {
-  display: flex;
-  align-items: center;
-}
-
-label {
-  color: #56b6c2;
-  white-space: nowrap;
-}
-
-#command-input {
-  flex-grow: 1;
-  background-color: transparent;
-  border: none;
-  color: #d4d4d4;
-  font-family: inherit;
-  font-size: inherit;
-  outline: none;
-  padding-left: 8px;
-  caret-color: #d4d4d4;
-}
-
-#command-input::placeholder {
-  color: #6a6a6a;
+  word-break: break-all;
 }
 
 .welcome {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.logo {
-  width: 100px;
-  height: 100px;
-  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8b949e;
 }
 
 .welcome h1 {
   font-size: 2em;
-  margin-bottom: 10px;
+  margin-bottom: 0.5em;
+  color: #58a6ff;
 }
 
 .welcome p {
   font-size: 1.2em;
-  color: #888;
 }
 
+.welcome .logo {
+    height: 8em;
+}
+
+.terminal form {
+  align-items: baseline;
+}
+
+.terminal label {
+  white-space: pre;
+}
+
+.prompt-info {
+  color: #58a6ff; /* A bright blue */
+}
+
+.prompt-path {
+  color: #a5d6ff; /* A lighter blue */
+}
+
+.prompt-symbol {
+  color: #79c0ff; /* An intermediate blue */
+}
+
+
+.terminal input {
+  background-color: transparent;
+  border: none;
+  color: #c9d1d9;
+  font-family: inherit;
+  font-size: inherit;
+  flex-grow: 1;
+  padding: 0 5px;
+}
+
+.terminal input:focus {
+  outline: none;
+}
