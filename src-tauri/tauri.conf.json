@@ -24,6 +24,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "copyright": "© 2024 FTerm Developers. All rights reserved.",
+    "macOS": {
+      "signingIdentity": null,
+      "entitlements": null
+    },
     "icon": [
       "icons/icon.png",
       "icons/icon.ico"
