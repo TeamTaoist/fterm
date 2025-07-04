@@ -1,49 +1,108 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+import logo from "/logo.svg";
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+function App() {
+  const [command, setCommand] = useState("");
+  const [output, setOutput] = useState<string[]>([]);
+  const [cwd, setCwd] = useState("~");
+  const [showWelcome, setShowWelcome] = useState(true);
+  const endOfOutputRef = useRef<null | HTMLDivElement>(null);
+  const inputRef = useRef<null | HTMLInputElement>(null);
+
+  const scrollToBottom = () => {
+    endOfOutputRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const focusInput = () => {
+    inputRef.current?.focus();
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [output]);
+
+  useEffect(() => {
+    const getInitialCwd = async () => {
+      try {
+        const initialCwd: string = await invoke("execute_command", { command: "pwd" });
+        setCwd(initialCwd.trim());
+      } catch (e) {
+        console.error(e);
+        setOutput(prev => [...prev, String(e)]);
+      }
+    };
+    getInitialCwd();
+    focusInput();
+  }, []);
+
+  async function execute() {
+    if (showWelcome) {
+      setShowWelcome(false);
+    }
+
+    if (!command.trim()) {
+      setOutput(prev => [...prev, `[${cwd}]$ ${command}`]);
+      setCommand("");
+      return;
+    }
+
+    const commandToExecute = command;
+    setCommand(""); // Clear input immediately
+
+    setOutput(prev => [...prev, `[${cwd}]$ ${commandToExecute}`]);
+
+    try {
+      const result: string = await invoke("execute_command", { command: commandToExecute });
+      if (result) {
+        setOutput(prev => [...prev, result.trim()]);
+      }
+
+      if (commandToExecute.trim().startsWith("cd ")) {
+        const newCwd: string = await invoke("execute_command", { command: "pwd" });
+        setCwd(newCwd.trim());
+      }
+    } catch (err) {
+      setOutput(prev => [...prev, String(err)]);
+    }
   }
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <main className="container" onClick={focusInput}>
+      <div className="terminal">
+        <div className="output-area">
+          {showWelcome && (
+            <div className="welcome">
+              <img src={logo} alt="FTerm Logo" className="logo" />
+              <h1>Welcome to FTerm</h1>
+              <p>Your friendly neighborhood terminal.</p>
+            </div>
+          )}
+          {output.map((line, index) => (
+            <div key={index} dangerouslySetInnerHTML={{ __html: line.replace(/\n/g, '<br/>') }} />
+          ))}
+          <div ref={endOfOutputRef} />
+        </div>
+        <form
+          className="row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            execute();
+          }}
+        >
+          <label htmlFor="command-input">[{cwd}]$</label>
+          <input
+            ref={inputRef}
+            id="command-input"
+            autoFocus
+            value={command}
+            onChange={(e) => setCommand(e.currentTarget.value)}
+            placeholder=""
+          />
+        </form>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
     </main>
   );
 }

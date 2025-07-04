@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "sample",
+  "productName": "FTerm",
   "version": "0.1.0",
-  "identifier": "com.sample.app",
+  "identifier": "com.fterm.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "sample",
+        "title": "FTerm",
         "width": 800,
         "height": 600
       }
@@ -25,11 +25,7 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/icon.svg"
     ]
   }
 }
