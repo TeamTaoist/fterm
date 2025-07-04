@@ -45,7 +45,7 @@ function App() {
       : "";
     const dir = `<span class="prompt-path">${displayPath}</span>`;
     const symbol = `<span class="prompt-symbol">%</span>`;
-    return `${userHost} ${dir} ${symbol}`;
+    return `${userHost}&nbsp;${dir}&nbsp;${symbol}`;
   };
 
   useEffect(() => {
@@ -125,17 +125,10 @@ function App() {
             execute();
           }}
         >
-          <label htmlFor="command-input">
-            {systemInfo && (
-              <span className="prompt-info">
-                {systemInfo.username}@{systemInfo.hostname}
-              </span>
-            )}
-            {' '}
-            <span className="prompt-path">{getDisplayPath(cwd)}</span>
-            {' '}
-            <span className="prompt-symbol">%</span>
-          </label>
+          <label
+            htmlFor="command-input"
+            dangerouslySetInnerHTML={{ __html: getPromptHtml(cwd) }}
+          />
           <input
             ref={inputRef}
             id="command-input"
