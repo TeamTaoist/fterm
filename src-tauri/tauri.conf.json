@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "FTerm",
   "version": "0.1.0",
-  "identifier": "com.fterm.app",
+  "identifier": "com.fterm",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -25,7 +25,7 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "icons/icon.svg"
+      "icons/icon.png"
     ]
   }
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
-import logo from "/logo.svg";
+import logo from "/logo.png";
 
 interface SystemInfo {
   username: string;
