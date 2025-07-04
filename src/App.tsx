@@ -1,14 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
-
 import logo from "/logo.svg";
+
+interface SystemInfo {
+  username: string;
+  hostname: string;
+}
 
 function App() {
   const [command, setCommand] = useState("");
   const [output, setOutput] = useState<string[]>([]);
   const [cwd, setCwd] = useState("~");
   const [showWelcome, setShowWelcome] = useState(true);
+  const [homeDir, setHomeDir] = useState("");
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const endOfOutputRef = useRef<null | HTMLDivElement>(null);
   const inputRef = useRef<null | HTMLInputElement>(null);
 
@@ -20,21 +26,49 @@ function App() {
     inputRef.current?.focus();
   };
 
+  const getDisplayPath = (path: string) => {
+    if (homeDir && path === homeDir) {
+      return "~";
+    }
+    if (path === '/') {
+        return '/';
+    }
+    const cleanedPath = path.endsWith('/') ? path.slice(0, -1) : path;
+    const lastSlashIndex = cleanedPath.lastIndexOf('/');
+    return cleanedPath.substring(lastSlashIndex + 1);
+  };
+
+  const getPromptHtml = (path: string) => {
+    const displayPath = getDisplayPath(path);
+    const userHost = systemInfo
+      ? `<span class="prompt-info">${systemInfo.username}@${systemInfo.hostname}</span>`
+      : "";
+    const dir = `<span class="prompt-path">${displayPath}</span>`;
+    const symbol = `<span class="prompt-symbol">%</span>`;
+    return `${userHost} ${dir} ${symbol}`;
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [output]);
 
   useEffect(() => {
-    const getInitialCwd = async () => {
+    const getInitialData = async () => {
       try {
-        const initialCwd: string = await invoke("execute_command", { command: "pwd" });
+        const [initialCwd, initialHomeDir, sysInfo] = await Promise.all([
+          invoke<string>("execute_command", { command: "pwd" }),
+          invoke<string>("get_home_dir"),
+          invoke<SystemInfo>("get_system_info"),
+        ]);
         setCwd(initialCwd.trim());
+        setHomeDir(initialHomeDir.trim());
+        setSystemInfo(sysInfo);
       } catch (e) {
         console.error(e);
         setOutput(prev => [...prev, String(e)]);
       }
     };
-    getInitialCwd();
+    getInitialData();
     focusInput();
   }, []);
 
@@ -43,16 +77,15 @@ function App() {
       setShowWelcome(false);
     }
 
-    if (!command.trim()) {
-      setOutput(prev => [...prev, `[${cwd}]$ ${command}`]);
-      setCommand("");
+    const promptHtml = getPromptHtml(cwd);
+    const commandToExecute = command;
+
+    setOutput(prev => [...prev, `${promptHtml} ${commandToExecute}`]);
+    setCommand("");
+
+    if (!commandToExecute.trim()) {
       return;
     }
-
-    const commandToExecute = command;
-    setCommand(""); // Clear input immediately
-
-    setOutput(prev => [...prev, `[${cwd}]$ ${commandToExecute}`]);
 
     try {
       const result: string = await invoke("execute_command", { command: commandToExecute });
@@ -92,7 +125,17 @@ function App() {
             execute();
           }}
         >
-          <label htmlFor="command-input">[{cwd}]$</label>
+          <label htmlFor="command-input">
+            {systemInfo && (
+              <span className="prompt-info">
+                {systemInfo.username}@{systemInfo.hostname}
+              </span>
+            )}
+            {' '}
+            <span className="prompt-path">{getDisplayPath(cwd)}</span>
+            {' '}
+            <span className="prompt-symbol">%</span>
+          </label>
           <input
             ref={inputRef}
             id="command-input"
