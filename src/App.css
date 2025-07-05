@@ -1,34 +1,79 @@
-:root {
+/* === Base and Layout === */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #f6f6f6;
   background-color: #0d1117;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
+  color: #f6f6f6;
 }
 
 .container {
-  margin: 0;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  box-sizing: border-box;
-  background-color: #161b22;
+  height: 100%;
 }
 
+/* === Tab Bar === */
 .tab-bar {
   display: flex;
   background-color: #010409;
   padding: 5px 5px 0 5px;
-  flex-shrink: 0;
+  flex-shrink: 0; /* Prevents the tab bar from shrinking */
 }
+
+/* === Main Terminal Content Area === */
+.terminal-content {
+  flex: 1; /* Takes up all remaining space */
+  display: flex;
+  overflow: hidden; /* Prevents this container from scrolling */
+}
+
+.terminal-instance {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* Hide inactive tabs */
+}
+
+.terminal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #161b22;
+  color: #c9d1d9;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  padding: 15px;
+  border: 1px solid #30363d;
+  border-top: none;
+  border-radius: 6px;
+  border-top-left-radius: 0;
+}
+
+/* === The ONLY scrollable area === */
+.output-area {
+  flex: 1; /* Takes up available space in .terminal */
+  overflow-y: auto;
+  word-break: break-all;
+}
+
+.terminal form {
+  display: flex;
+  align-items: center; /* Use center alignment for stability */
+  flex-shrink: 0; /* Prevents the form from shrinking */
+}
+
+/* === Theming and Component Styles === */
 
 .tab-item {
   background-color: #0d1117;
@@ -83,55 +128,6 @@
   background-color: #161b22;
 }
 
-.terminal-content {
-  flex-grow: 1;
-  overflow: hidden;
-}
-
-.terminal-instance {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
-
-.logo {
-  height: 10em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.terminal {
-  background-color: #161b22;
-  color: #c9d1d9;
-  font-family: 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
-  font-size: 14px;
-  padding: 15px;
-  border-radius: 6px;
-  border-top-left-radius: 0;
-  border: 1px solid #30363d;
-  border-top: none;
-  overflow-y: auto;
-  flex-grow: 1;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  box-sizing: border-box;
-}
-
-.output-area {
-  flex-grow: 1;
-  overflow-y: auto;
-  word-break: break-all;
-}
-
 .welcome {
   display: flex;
   flex-direction: column;
@@ -153,10 +149,9 @@
 
 .welcome .logo {
     height: 8em;
-}
-
-.terminal form {
-  align-items: baseline;
+    padding: 1.5em;
+    will-change: filter;
+    transition: 0.75s;
 }
 
 .terminal label {
@@ -174,7 +169,6 @@
 .prompt-symbol {
   color: #79c0ff; /* An intermediate blue */
 }
-
 
 .terminal input {
   background-color: transparent;

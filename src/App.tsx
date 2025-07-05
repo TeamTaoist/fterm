@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { v4 as uuidv4 } from 'uuid';
@@ -37,6 +37,7 @@ function App() {
 
   const endOfOutputRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const activeTab = tabs.find(tab => tab.id === activeTabId);
 
   // Scroll to bottom of the active tab's output
   const scrollToBottom = (tabId: string) => {
@@ -174,12 +175,13 @@ function App() {
   }, []); // Run only once
 
   // Effect to scroll and focus when active tab changes or its output updates
-  useEffect(() => {
-    if (activeTabId) {
-      scrollToBottom(activeTabId);
-      focusInput(activeTabId);
+  // Using useLayoutEffect to prevent flicker/shake when commands are executed
+  useLayoutEffect(() => {
+    if (activeTab) {
+      scrollToBottom(activeTab.id);
+      focusInput(activeTab.id);
     }
-  }, [activeTabId, tabs]);
+  }, [activeTab?.output, activeTabId]); // Re-run only when output or active tab changes
 
   return (
     <main className="container">
