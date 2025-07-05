@@ -80,3 +80,35 @@ This command will build the app, sign it, notarize it with Apple, and bundle it 
     `src-tauri/target/release/bundle/dmg/Fterm_[version]_aarch64.dmg`
 
 2.  The recommended way to distribute the app is to create a new **GitHub Release** and upload this `.dmg` file as a release asset.
+
+## 7. Automated Builds with GitHub Actions
+
+To automate the release process, you can use GitHub Actions. This requires adding your signing credentials as secure secrets to your GitHub repository.
+
+### Step 7a: Export Certificates as a .p12 File
+
+Bundle your signing certificates and private keys into a single, password-protected `.p12` file.
+
+1.  Open **Keychain Access**.
+2.  Under "My Certificates", find and select your `Developer ID Application` and `Developer ID Installer` certificates, along with their corresponding private keys (4 items total).
+3.  Right-click the selected items and choose **"Export 4 items..."**.
+4.  Set the file format to **Personal Information Exchange (.p12)** and save the file (e.g., `Certs.p12`).
+5.  You will be prompted to create a password for the file. Create a strong password and save it securely.
+
+### Step 7b: Base64 Encode the Certificate File
+
+GitHub secrets must be text. Convert the `.p12` file to a base64 string and copy it to your clipboard with this terminal command:
+
+```sh
+base64 -i /path/to/your/Certs.p12 | pbcopy
+```
+
+### Step 7c: Create GitHub Repository Secrets
+
+In your GitHub repository, navigate to `Settings > Secrets and variables > Actions` and add the following repository secrets:
+
+-   `APPLE_ID`: Your Apple ID email address.
+-   `APPLE_PASSWORD`: Your app-specific password for notarization.
+-   `APPLE_TEAM_ID`: Your Apple Team ID.
+-   `APPLE_CERTIFICATE_PASSWORD`: The password you created for the `.p12` file.
+-   `APPLE_CERTIFICATE`: Paste the base64-encoded certificate string from your clipboard.
