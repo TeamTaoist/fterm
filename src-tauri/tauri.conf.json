@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "FTerm",
+  "productName": "Fterm",
   "version": "0.1.0",
-  "identifier": "com.fterm",
+  "identifier": "com.taoist.fterm",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "FTerm",
+        "title": "Fterm",
         "width": 800,
         "height": 600
       }
@@ -24,9 +24,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "copyright": "© 2024 FTerm Developers. All rights reserved.",
+    "copyright": "© 2024 Fterm Developers. All rights reserved.",
     "macOS": {
-      "signingIdentity": null,
+      "signingIdentity": "Developer ID Application: Rui Xie (69GK3C9666)",
       "entitlements": null
     },
     "icon": [
