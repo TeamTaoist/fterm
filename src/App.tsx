@@ -79,7 +79,10 @@ function App() {
 
   // Close a tab
   const closeTab = (tabId: string) => {
-    if (tabs.length <= 1) return; // Prevent closing the last tab
+    if (tabs.length <= 1) {
+      exit(0);
+      return;
+    }
 
     const tabIndex = tabs.findIndex(tab => tab.id === tabId);
     const newTabs = tabs.filter(tab => tab.id !== tabId);
