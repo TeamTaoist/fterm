@@ -120,11 +120,35 @@ Create a workflow file at `.github/workflows/release.yml`. This workflow should 
 To build a **Universal Binary** that supports both Intel and Apple Silicon Macs, add the following argument to the `tauri-action` step:
 
 ```yaml
-- name: Build the app
-  uses: tauri-apps/tauri-action@v0
-  env:
-    # ... your secrets here
-  with:
-    # ... other options
-    args: '--target universal-apple-darwin'
+      - name: Install Rust target for Universal Mac Build
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Build the app on macOS
+        if: matrix.platform == 'macos-latest'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Fterm ${{ github.ref_name }}'
+          releaseBody: 'See the assets to download this version.'
+          prerelease: false
+          args: '--target universal-apple-darwin'
+
+      - name: Build the app on Windows & Linux
+        if: matrix.platform != 'macos-latest'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Fterm ${{ github.ref_name }}'
+          releaseBody: 'See the assets to download this version.'
+          prerelease: false
 ```
