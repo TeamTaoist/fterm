@@ -112,3 +112,19 @@ In your GitHub repository, navigate to `Settings > Secrets and variables > Actio
 -   `APPLE_TEAM_ID`: Your Apple Team ID.
 -   `APPLE_CERTIFICATE_PASSWORD`: The password you created for the `.p12` file.
 -   `APPLE_CERTIFICATE`: Paste the base64-encoded certificate string from your clipboard.
+
+### Step 7d: Create the Workflow File
+
+Create a workflow file at `.github/workflows/release.yml`. This workflow should trigger on a tag push (e.g., `v*`) and use the `tauri-apps/tauri-action@v0` action.
+
+To build a **Universal Binary** that supports both Intel and Apple Silicon Macs, add the following argument to the `tauri-action` step:
+
+```yaml
+- name: Build the app
+  uses: tauri-apps/tauri-action@v0
+  env:
+    # ... your secrets here
+  with:
+    # ... other options
+    args: '--target universal-apple-darwin'
+```
