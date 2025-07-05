@@ -1,8 +1,8 @@
+use dirs;
 use serde::Serialize;
 use std::env;
 use std::process::Command;
 use whoami;
-use dirs;
 
 #[derive(Serialize, Clone)]
 pub struct SystemInfo {

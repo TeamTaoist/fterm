@@ -3,21 +3,19 @@
 
 mod commands;
 
-use tauri::{
-    menu::{
-        AboutMetadata, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder, MenuId,
-    },
-    image::Image,
-    Emitter,
-    Manager,
-    WebviewUrl,
-    WebviewWindowBuilder,
-};
 use image::GenericImageView;
+use tauri::{
+    image::Image,
+    menu::{
+        AboutMetadata, MenuBuilder, MenuId, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder,
+    },
+    Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
+};
 use tauri_plugin_opener::OpenerExt;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
@@ -71,7 +69,8 @@ fn main() {
 
             let help_menu = SubmenuBuilder::new(handle, "Help")
                 .items(&[
-                    &MenuItemBuilder::with_id(MenuId::new("learn_more"), "Learn More").build(handle)?,
+                    &MenuItemBuilder::with_id(MenuId::new("learn_more"), "Learn More")
+                        .build(handle)?,
                 ])
                 .build()?;
 
@@ -101,7 +100,7 @@ fn main() {
                         .opener()
                         .open_url("https://teamtaoist.github.io/fterm/", None::<String>);
                 }
-                _ => {},
+                _ => {}
             });
 
             Ok(())

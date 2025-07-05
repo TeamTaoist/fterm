@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { exit } from "@tauri-apps/plugin-process";
 import { v4 as uuidv4 } from 'uuid';
 import "./App.css";
 import logo from "/logo.png";
@@ -122,6 +123,15 @@ function App() {
     updateTab(tabId, { command: "", showWelcome: false, output: newOutput });
 
     if (!commandToExecute.trim()) {
+      return;
+    }
+
+    if (commandToExecute.trim().toLowerCase() === 'exit') {
+      if (tabs.length > 1) {
+        closeTab(tabId);
+      } else {
+        exit(0);
+      }
       return;
     }
 
