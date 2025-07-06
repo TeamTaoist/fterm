@@ -7,9 +7,10 @@ import '@xterm/xterm/css/xterm.css';
 
 interface TerminalComponentProps {
     id: string;
+    onTitleChange: (id: string, title: string) => void;
 }
 
-const TerminalComponent = ({ id }: TerminalComponentProps) => {
+const TerminalComponent = ({ id, onTitleChange }: TerminalComponentProps) => {
     const termRef = useRef<HTMLDivElement>(null);
     const term = useRef<Terminal | null>(null);
     useEffect(() => {
@@ -26,6 +27,10 @@ const TerminalComponent = ({ id }: TerminalComponentProps) => {
         xterm.loadAddon(fitAddon);
         xterm.open(termRef.current);
         term.current = xterm;
+
+        xterm.onTitleChange((title) => {
+            onTitleChange(id, title);
+        });
 
         // 2. Calculate Initial Size and Spawn PTY
         // First `fit` is to measure the container.
@@ -106,7 +111,7 @@ const TerminalComponent = ({ id }: TerminalComponentProps) => {
             term.current?.dispose();
             term.current = null;
         };
-    }, [id]);
+    }, [id, onTitleChange]);
 
     return <div ref={termRef} style={{ width: '100%', height: '100%' }} />;
 };

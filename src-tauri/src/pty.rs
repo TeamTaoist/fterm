@@ -1,15 +1,15 @@
 use anyhow::Result;
-use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem, Child};
+use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc::{channel, Sender}, Arc, Mutex};
 use std::thread;
 use tauri::{AppHandle, Emitter, Runtime};
 
 pub struct PtyInstance {
     master: Box<dyn portable_pty::MasterPty + Send>,
-    child: Arc<Mutex<Box<dyn Child + Send + Sync>>>,
+    killer: Sender<()>,
 }
 
 #[derive(Clone)]
@@ -48,29 +48,53 @@ pub fn pty_spawn<R: Runtime>(
         })
         .map_err(|e| e.to_string())?;
 
-    let mut cmd = CommandBuilder::new(default_shell());
+    let shell = default_shell();
+    let mut cmd = CommandBuilder::new(&shell);
     cmd.env("TERM", "xterm-256color");
-    let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+    let mut child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+
+    // Inject the title-setting command
+    let mut writer = pair.master.try_clone_writer().map_err(|e| e.to_string())?;
+    let shell_init_cmd = if shell.ends_with("zsh") {
+        "precmd() { print -Pn \"\\033]0;%1c\\a\" }\n"
+    } else if shell.ends_with("bash") {
+        "PROMPT_COMMAND='echo -ne \"\\033]0;\\W\\a\"'\n"
+    } else {
+        ""
+    };
+
+    if !shell_init_cmd.is_empty() {
+        writer.write_all(shell_init_cmd.as_bytes()).map_err(|e| e.to_string())?;
+    }
 
     let master = pair.master;
     let mut reader = master.try_clone_reader().map_err(|e| e.to_string())?;
 
+    let (tx, rx) = channel::<()>();
+
+    // Waiter thread
+    thread::spawn(move || {
+        if rx.recv().is_ok() {
+            let _ = child.kill();
+        }
+        let _ = child.wait();
+    });
+
     let event_name = format!("pty_data_{}", id);
     let app_clone = app.clone();
+    let state_clone = state.inner().clone();
+    let id_clone = id.clone();
+
+    // Reader thread
     thread::spawn(move || {
         let mut buffer = [0u8; 1024];
         loop {
             match reader.read(&mut buffer) {
                 Ok(count) => {
                     if count > 0 {
-                        let data = &buffer[..count];
-                        app_clone
-                            .emit(&event_name, String::from_utf8_lossy(data).to_string())
-                            .unwrap();
+                        app_clone.emit(&event_name, String::from_utf8_lossy(&buffer[..count]).to_string()).unwrap();
                     } else {
-                        app_clone
-                            .emit(&event_name, "\r\n[Process exited]\r\n".to_string())
-                            .unwrap();
+                        app_clone.emit(&event_name, "\r\n[Process exited]\r\n".to_string()).unwrap();
                         break;
                     }
                 }
@@ -79,18 +103,11 @@ pub fn pty_spawn<R: Runtime>(
                 }
             }
         }
-    });
-
-    let child = Arc::new(Mutex::new(child));
-    let child_clone_for_wait = child.clone();
-    let state_clone = state.inner().clone();
-    let id_clone = id.clone();
-    thread::spawn(move || {
-        let _ = child_clone_for_wait.lock().unwrap().wait();
+        // Cleanup
         state_clone.ptys.lock().unwrap().remove(&id_clone);
     });
 
-    let pty_instance = PtyInstance { master, child };
+    let pty_instance = PtyInstance { master, killer: tx };
     state.ptys.lock().unwrap().insert(id, pty_instance);
 
     Ok(())
@@ -127,8 +144,8 @@ pub fn pty_resize(
 
 #[tauri::command]
 pub fn pty_kill(id: String, state: tauri::State<'_, PtyState>) -> Result<(), String> {
-    if let Some(pty) = state.ptys.lock().unwrap().remove(&id) {
-        pty.child.lock().unwrap().kill().map_err(|e| e.to_string())?;
+    if let Some(pty) = state.ptys.lock().unwrap().get(&id) {
+        let _ = pty.killer.send(());
     }
     Ok(())
 }
