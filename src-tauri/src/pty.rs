@@ -29,20 +29,22 @@ pub struct PtyResize {
 #[tauri::command]
 pub fn pty_spawn<R: Runtime>(
     id: String,
+    size: PtyResize,
     app: AppHandle<R>,
     state: tauri::State<'_, PtyState>,
 ) -> Result<(), String> {
     let pty_system = NativePtySystem::default();
     let pair = pty_system
         .openpty(PtySize {
-            rows: 24,
-            cols: 80,
+            rows: size.rows,
+            cols: size.cols,
             pixel_width: 0,
             pixel_height: 0,
         })
         .map_err(|e| e.to_string())?;
 
-    let cmd = CommandBuilder::new(default_shell());
+    let mut cmd = CommandBuilder::new(default_shell());
+    cmd.env("TERM", "xterm-256color");
     let mut child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
 
     let master = pair.master;

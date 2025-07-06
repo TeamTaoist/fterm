@@ -13,9 +13,11 @@ const TerminalComponent = ({ id }: TerminalComponentProps) => {
     const termRef = useRef<HTMLDivElement>(null);
     const term = useRef<Terminal | null>(null);
     useEffect(() => {
-        if (!termRef.current) return;
+        if (!termRef.current) {
+            return;
+        }
 
-        // 1. Initialize xterm.js
+        // 1. Initialize Terminal and Addons
         const xterm = new Terminal({
             cursorBlink: true,
             fontFamily: 'monospace',
@@ -25,62 +27,83 @@ const TerminalComponent = ({ id }: TerminalComponentProps) => {
         xterm.open(termRef.current);
         term.current = xterm;
 
-        // 2. Setup resizing
-        const handleResize = () => {
-            try {
-                fitAddon.fit();
-                const { rows, cols } = xterm;
-                invoke('pty_resize', { id, size: { rows, cols } });
-            } catch (e) {
-                console.error('Error during resize:', e);
-            }
+        // 2. Calculate Initial Size and Spawn PTY
+        // First `fit` is to measure the container.
+        fitAddon.fit();
+        const initialDimensions = {
+            rows: xterm.rows,
+            cols: xterm.cols,
         };
 
-        const resizeObserver = new ResizeObserver(handleResize);
-        if (termRef.current) {
-            resizeObserver.observe(termRef.current);
-        }
-        window.addEventListener('resize', handleResize);
-        handleResize(); // Initial resize
-
-        // 3. Setup PTY communication
-        let unlisten: (() => void) | undefined;
         let ptyReady = false;
+        let unlisten: (() => void) | undefined;
+        let resizeObserver: ResizeObserver | null = null;
+        let isInitialResize = true; // Flag to prevent resize on first observer trigger.
 
-        invoke('pty_spawn', { id })
-            .then(() => {
-                if (!term.current) return; // Component might have been unmounted
-                ptyReady = true;
+        invoke('pty_spawn', {
+            id,
+            size: {
+                rows: initialDimensions.rows,
+                cols: initialDimensions.cols,
+            },
+        })
+        .then(() => {
+            if (!term.current) return;
+            ptyReady = true;
 
-                // Listen for data from the backend
-                const eventName = `pty_data_${id}`;
-                listen<string>(eventName, (event) => {
-                    xterm.write(event.payload);
-                }).then(cleanupFn => {
-                    unlisten = cleanupFn;
-                });
+            // 3. Setup Event Listeners
+            const eventName = `pty_data_${id}`;
+            listen<string>(eventName, (event) => {
+                xterm.write(event.payload);
+            }).then((cleanupFn) => {
+                unlisten = cleanupFn;
+            });
 
-                // Send data to the backend
-                xterm.onData((data) => {
+            xterm.onData((data) => {
+                if (ptyReady) {
                     invoke('pty_write', { id, data });
-                });
-            })
-            .catch(e => {
-                console.error('pty_spawn failed:', e);
-                if (term.current) {
-                    xterm.write(`\r\n\x1b[31mError: Failed to spawn PTY.\x1b[0m`);
                 }
             });
 
-        // 4. Return cleanup function
+            // 4. Setup Resize Observer for subsequent resizes
+            const handleResize = () => {
+                // The observer fires immediately. We skip the first one because
+                // we already spawned the PTY with the correct size.
+                if (isInitialResize) {
+                    isInitialResize = false;
+                    return;
+                }
+                try {
+                    fitAddon.fit();
+                    invoke('pty_resize', {
+                        id,
+                        size: { rows: xterm.rows, cols: xterm.cols },
+                    });
+                } catch (e) {
+                    console.error('Error during resize:', e);
+                }
+            };
+
+            if (termRef.current) {
+                resizeObserver = new ResizeObserver(handleResize);
+                resizeObserver.observe(termRef.current);
+            }
+        })
+        .catch((e) => {
+            console.error('pty_spawn failed:', e);
+            if (term.current) {
+                xterm.write(`\r\n\x1b[31mError: Failed to spawn PTY: ${e}\x1b[0m`);
+            }
+        });
+
+        // 5. Cleanup
         return () => {
-            resizeObserver.disconnect();
-            window.removeEventListener('resize', handleResize);
+            resizeObserver?.disconnect();
             unlisten?.();
             if (ptyReady) {
                 invoke('pty_kill', { id });
             }
-            xterm.dispose();
+            term.current?.dispose();
             term.current = null;
         };
     }, [id]);
