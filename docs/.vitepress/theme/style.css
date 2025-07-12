@@ -137,3 +137,21 @@
   --docsearch-primary-color: var(--vp-c-brand-1) !important;
 }
 
+:root {
+    --vp-layout-max-width: 1360px;
+    --vp-home-hero-padding: 48px 24px;
+}
+
+.VPHomeHero .container {
+    max-width: 1024px !important;
+}
+
+.VPFeatures .items {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1024px !important;
+    margin: 0 auto;
+}
+
+
