@@ -1,7 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod commands;
+
+mod pty;
 
 use image::GenericImageView;
 use tauri::{
@@ -15,6 +16,7 @@ use tauri_plugin_opener::OpenerExt;
 
 fn main() {
     tauri::Builder::default()
+        .manage(pty::PtyState::new())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
@@ -106,10 +108,10 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::execute_command,
-            commands::get_system_info,
-            commands::get_current_dir,
-            commands::get_home_dir
+            pty::pty_spawn,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_kill
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
