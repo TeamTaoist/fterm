@@ -22,6 +22,10 @@ const TerminalComponent = ({ id, onTitleChange }: TerminalComponentProps) => {
         const xterm = new Terminal({
             cursorBlink: true,
             fontFamily: 'monospace',
+            theme: {
+                foreground: '#00FF00',
+                background: '#000000',
+            },
         });
         const fitAddon = new FitAddon();
         xterm.loadAddon(fitAddon);
